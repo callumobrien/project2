@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link rel="stylesheet" type="text/css" href="../static/bikes.css">
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script src="/js/plugins/openWeather.js"></script>
+    <script>
+
+  setTimeout(function() {
+    $('#myDiv').hide();
+}, 5000);</script>
+    
+    
+    
+    <title>DublinBikes</title>
+</head> 
+<body onload="load()">
+
+    <header id="header"> Dublin Bikes<br></header>
+
+    <div id="wrap">
+        
+        <div id="map"></div>
+        <div id="moreinfo">
+            <div id="chart_div"></div><div id="chart1_div"></div>
+        <div id = "myDiv"><h3>Please wait for data to load</h3><img src = "../static/loading-bikes.gif" alt="Please wait for data to load" style="width:300px;height:300px;">
+        </div>
+        <!--Widget from openweathermap.org Ideally would have been custom made-->
+            <div id='openweathermap-widget'></div> 
+        </div>
+        <script type='text/javascript'>
+            window.myWidgetParam = {
+                id: 15,
+                cityid: 2964574,
+                appid: '0788f736465a29ac1be4ee900398fddd',
+                units: 'metric',
+                containerid: 'openweathermap-widget',
+            };
+            (function() {
+                var script = document.createElement('script');
+                script.type = 'text/javascript';
+                script.async = true;
+                script.src = 'http://openweathermap.org/themes/openweathermap/assets/vendor/owm/js/weather-widget-generator.js';
+                var s = document.getElementsByTagName('script')[0];
+                s.parentNode.insertBefore(script, s);
+            })();
+
+    
+
+    
+
+            function load() {
+                var xmlhttp = new XMLHttpRequest();
+                var url = '../static/Dublin.json';
+                //alert("1") Testing using alerts;
+
+
+
+                xmlhttp.onreadystatechange = function() {
+                    if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+                        var arr = JSON.parse(xmlhttp.responseText);
+                        //alert("2")test;
+                        myMap(arr);
+
+                    }
+                };
+                xmlhttp.open("GET", url, true);
+                xmlhttp.send();
+
+
+            }
+
+
+
+	google.charts.load('current', {
+            'packages': ['corechart']
+        });
+        
+        // Set a callback to run when the Google Visualization API is loaded.
+        google.charts.setOnLoadCallback(drawChart);
+        google.charts.setOnLoadCallback(drawChart1);
+        
+        // Callback that creates and populates a data table, 
+        // instantiates the pie chart, passes in the data and
+        // draws it.
+       
+        function drawChart(x, y, z) {
+            // Create the data table cooly.
+            var data = new google.visualization.DataTable();
+            data.addColumn('string', 'Occupancy');
+            data.addColumn('number', 'Bikes');
+            data.addRows([
+          ["Free stands: "+y+"", y],
+          ["Available Bikes: "+x+"", x]
+      ]);
+            // Set chart options
+            var options = {
+                'title': z
+                , 'width': 500
+                , 'height': 350
+                
+            };
+            // Instantiate and draw our chart, passing in some options.
+            var chart = new google.visualization.PieChart(document.getElementById('chart_div'));
+            chart.draw(data, options);
+        }
+        
+         function drawChart1(a, b, c, d, e, f, g) {
+          
+            var data = google.visualization.arrayToDataTable([
+          ['Day', 'Average']
+          , ['Monday', a]
+          , ['Tuesday', b]
+          , ['Wednesday', c]
+          , ['Thursday', d]
+          , ['Friday', e]
+          , ['Saturday', f]
+          , ['Sunday', g]
+            ]);
+
+        var options = {
+          title: 'Average Free Bikes at Stop ',
+          hAxis: {title: 'Days',  titleTextStyle: {color: '#333'}},
+          vAxis: {minValue: 0},
+          'width': 500,
+          'height': 300
+                
+        };
+
+        var chart1 = new google.visualization.AreaChart(document.getElementById('chart1_div'));
+        chart1.draw(data, options);
+        
+      }
+
+
+            function myMap(arr) {
+                
+                var out = "";
+                var mapCanvas = document.getElementById("map");
+                var mapOptions = {
+                        center: new google.maps.LatLng(53.3498, -6.2603),
+                        zoom: 14
+                    }
+                    //Taken from http://www.svennerberg.com/2012/03/adding-multiple-markers-to-google-maps-from-json/
+                var map = new google.maps.Map(mapCanvas, mapOptions);
+                var infoWindow = new google.maps.InfoWindow();
+                for (var i = 0, length = arr.length; i < length; i++) {
+                    var data = arr[i],
+                        latLng = new google.maps.LatLng(data.latitude, data.longitude);
+                    
+
+                    var marker = new google.maps.Marker({
+                        position: latLng,
+                        map: map
+                        
+                    });
+                    
+                     
+                    (function(marker, data) {
+                        
+                        
+                        google.maps.event.addListener(marker, "mouseover", function(e) {
+                            infoWindow.setContent("Number: " + data.number + "<br/>" + data.name);
+                            infoWindow.open(map, marker);
+                            
+        });     
+                         marker.addListener('click', function() {
+                            var stand_no = data.number;
+                            closebtn();
+                            var jqxhr = $.getJSON("/test/" + data.number+"",
+ function(current) {
+ //alert(current.available[1]);
+ var bikes = current.available;
+ var standname = bikes[1];
+ var status = bikes[2];
+ var stands = bikes[3];
+ var available = bikes[4];
+ var unavailable = bikes[5];
+ var timestamp = bikes[6];
+ drawChart(available, unavailable, standname);
+ infoWindow.setContent("<button onclick='submitnumber("+stand_no+")'>More Info</button></n><ul><li>"+standname+"</li><li>"+status+"</li></ul>");
+ infowindow.open(map, marker);                      
+}).fail(function() {
+ console.log( "error" );
+ });                            
+
+                        });                        
+
+                    })(marker, data);
+                }
+            }
+    
+ 
+  function submitnumber(x) {  // This function takes in x the stand number an calls queries.python with x as its argument from a seperate url
+     //alert(x);
+  			//drawChart1(16, 20, 20, 18, 17, 19, 20);
+            var jqxhr = $.getJSON("/weekly/" + x+"",
+ function(data) {
+ var weekly = data.daily_average;
+ var mon = weekly[0];
+ var tues = weekly[1];
+ var wed = weekly[2];
+ var thurs = weekly[3];
+ var fri = weekly[4];
+ var sat = weekly[5];
+ var sun = weekly[6];
+ //alert(sun);
+ drawChart1(mon, tues, wed, thurs, fri, sat, sun);
+ document.getElementById('chart1_div').style.display="block";
+ document.getElementById('btn').style.display="block";
+ document.getElementById('chart_div').style.display="none";
+ document.getElementById('openweathermap-widget').style.display="none";
+ }).fail(function() {
+ console.log( "error" );
+ }) 
+        }
+  
+  
+  function closebtn() { //used to bring back up divs of live data and hide historical data
+      document.getElementById('chart1_div').style.display="none";
+      document.getElementById('chart_div').style.display="block";
+      document.getElementById('openweathermap-widget').style.display="block";
+      document.getElementById('btn').style.display="none";
+        }
+
+        </script>
+
+        <script src="https://maps.googleapis.com/maps/api/js?callback=myMap"></script>
+        
+        
+        
+        <footer id="footer"><div id="btn"><button onclick="closebtn()">Close</button></div></footer>
+</body>
+
+</html>
